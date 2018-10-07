@@ -1,0 +1,136 @@
+apiVersion: v1
+items:
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      service.alpha.kubernetes.io/tolerate-unready-endpoints: "true"
+    creationTimestamp: null
+    labels:
+      app: zk
+    name: zk
+  spec:
+    clusterIP: None
+    ports:
+    - name: peer
+      port: 2888
+      protocol: TCP
+      targetPort: 2888
+    - name: leader-election
+      port: 3888
+      protocol: TCP
+      targetPort: 3888
+    selector:
+      app: zk
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
+- apiVersion: v1
+  kind: Service
+  metadata:
+    creationTimestamp: null
+    name: zookeeper
+  spec:
+    ports:
+    - name: client
+      port: 2181
+      protocol: TCP
+      targetPort: 2181
+    selector:
+      app: zk
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
+- apiVersion: apps/v1beta1
+  kind: StatefulSet
+  metadata:
+    creationTimestamp: null
+    generation: 1
+    name: zoo
+  spec:
+    replicas: 3
+    selector:
+      matchLabels:
+        app: zk
+    serviceName: zk
+    template:
+      metadata:
+        annotations:
+          pod.alpha.kubernetes.io/initialized: "true"
+          service.alpha.kubernetes.io/tolerate-unready-endpoints: "true"
+        creationTimestamp: null
+        labels:
+          app: zk
+      spec:
+        containers:
+        - command:
+          - sh
+          - -c
+          - ./zk-start.sh skipACL=yes
+          env:
+          - name: ZOOKEEPER_LOG4J_ROOT_LOGLEVEL
+            value: ERROR
+          - name: ZOOKEEPER_TOOLS_LOG4J_LOGLEVEL
+            value: ERROR
+          - name: JVMFLAGS
+            value: -Xmx512m
+          image: docker.io/spicysomtam/zookeeper:3.5.3-beta
+          imagePullPolicy: Always
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                - sh
+                - -c
+                - /bin/killall -s TERM java
+          livenessProbe:
+            exec:
+              command:
+              - sh
+              - -c
+              - bin/zkCli.sh ls /
+            failureThreshold: 3
+            initialDelaySeconds: 80
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 5
+          name: zk
+          ports:
+          - containerPort: 2181
+            name: client
+            protocol: TCP
+          - containerPort: 2888
+            name: peer
+            protocol: TCP
+          - containerPort: 3888
+            name: leader-election
+            protocol: TCP
+          readinessProbe:
+            exec:
+              command:
+              - sh
+              - -c
+              - grep -q dynamic. conf/zoo.cfg
+            failureThreshold: 3
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 5
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext:
+          runAsUser: 1000060000
+        terminationGracePeriodSeconds: 30
+        volumes:
+        - emptyDir: {}
+          name: opt
+        - emptyDir: {}
+          name: workdir
+kind: List
+metadata: {}

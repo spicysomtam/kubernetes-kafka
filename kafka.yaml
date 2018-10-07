@@ -1,0 +1,104 @@
+apiVersion: v1
+items:
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      service.alpha.kubernetes.io/tolerate-unready-endpoints: "true"
+    creationTimestamp: null
+    labels:
+      app: kafka-no-pvcs
+      template: kafka-no-pvcs
+    name: broker
+  spec:
+    clusterIP: None
+    ports:
+    - port: 9092
+      protocol: TCP
+      targetPort: 9092
+    selector:
+      app: kafka
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
+- apiVersion: v1
+  kind: Service
+  metadata:
+    creationTimestamp: null
+    labels:
+      app: kafka-no-pvcs
+      template: kafka-no-pvcs
+    name: kafka
+  spec:
+    ports:
+    - port: 9092
+      protocol: TCP
+      targetPort: 9092
+    selector:
+      app: kafka
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
+- apiVersion: apps/v1beta1
+  kind: StatefulSet
+  metadata:
+    creationTimestamp: null
+    generation: 1
+    labels:
+      app: kafka-no-pvcs
+    name: kafka
+  spec:
+    replicas: 4
+    selector:
+      matchLabels:
+        app: kafka
+    serviceName: broker
+    template:
+      metadata:
+        annotations:
+          pod.alpha.kubernetes.io/initialized: "true"
+        creationTimestamp: null
+        labels:
+          app: kafka
+      spec:
+        containers:
+        - command:
+          - sh
+          - -c
+          - ./bin/kafka-server-start.sh config/server.properties --override broker.id=$(hostname
+            | awk -F'-' '{print $2}') --override delete.topic.enable=true --override
+            auto.create.topics.enable=false --override log.cleanup.policy=compact --override
+            log.cleaner.min.compaction.lag.ms=3600000 --override log.segment.bytes=104857600
+            --override log.roll.hours=8 --override log.dir=/tmp/kafka-logs/kafka --override
+            log.dirs=/tmp/kafka-logs/kafka --override inter.broker.protocol.version=0.11.0.1
+          env:
+          - name: KAFKA_OPTS
+          - name: KAFKA_HEAP_OPTS
+            value: -Xmx1024m
+          - name: KAFKA_JVM_PERFORMANCE_OPTS
+            value: -server -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35
+              -XX:+DisableExplicitGC -Djava.awt.headless=true
+          image: docker.io/spicysomtam/kafka:1.1.1
+          imagePullPolicy: Always
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                - ./bin/kafka-server-stop.sh
+          name: broker
+          ports:
+          - containerPort: 9092
+            protocol: TCP
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext:
+          runAsUser: 1000060000
+        terminationGracePeriodSeconds: 30
+kind: List
+metadata: {}
