@@ -2,7 +2,7 @@
 
 Deploys a kafka stack in kubernetes. Kafka requires zookeeper, so that is included. I include a Yahoo [kafka manager](https://github.com/yahoo/kafka-manager) deployment as well, which allows you to manage kafka.
 
-3 zookeeper instances are deployed and 4 kafka instances; although you might want to trim down the kafka replicas if using minikube.
+3 zookeeper instances are deployed and 4 kafka instances. You might want to trim down the kafka replicas if using minikube.
 
 # Deploy zookeeper
 
