@@ -72,7 +72,7 @@ items:
             auto.create.topics.enable=false --override log.cleanup.policy=compact --override
             log.cleaner.min.compaction.lag.ms=3600000 --override log.segment.bytes=104857600
             --override log.roll.hours=8 --override log.dir=/tmp/kafka-logs/kafka --override
-            log.dirs=/tmp/kafka-logs/kafka --override inter.broker.protocol.version=0.11.0.1
+            log.dirs=/tmp/kafka-logs/kafka --override inter.broker.protocol.version=1.1.1
           env:
           - name: KAFKA_OPTS
           - name: KAFKA_HEAP_OPTS
